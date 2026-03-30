@@ -1,6 +1,7 @@
 package server
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,7 +24,9 @@ type Server struct {
 }
 
 // Start creates the server, wires up routes, and begins listening.
-func Start(videoPath string, port int) {
+func Start(videoPath string, port int, embedded embed.FS) {
+	initFrontend(embedded)
+
 	tmpDir, err := os.MkdirTemp("", "captura-*")
 	if err != nil {
 		log.Fatalf("failed to create temp dir: %v", err)

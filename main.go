@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/Zuful/captura/internal/server"
 )
+
+//go:embed frontend/dist
+var frontendDist embed.FS
 
 func main() {
 	if len(os.Args) < 2 {
@@ -28,7 +32,7 @@ func main() {
 	}()
 
 	log.Printf("Starting Captura at %s", url)
-	server.Start(videoPath, port)
+	server.Start(videoPath, port, frontendDist)
 }
 
 func openBrowser(url string) {
