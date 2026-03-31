@@ -8,8 +8,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,6 +36,16 @@ func Start(videoPath string, port int, embedded embed.FS) {
 	if err != nil {
 		log.Fatalf("failed to create temp dir: %v", err)
 	}
+
+	// Clean up temp files on exit (Ctrl+C, kill, etc.)
+	go func() {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		log.Printf("Cleaning up temp files in %s", tmpDir)
+		os.RemoveAll(tmpDir)
+		os.Exit(0)
+	}()
 
 	s := &Server{
 		videoPath: videoPath,
