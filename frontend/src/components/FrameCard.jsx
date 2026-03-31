@@ -1,13 +1,9 @@
-function SharpnessBadge({ sharpness }) {
-  let colorClass = 'bg-red-600 text-white'
-  if (sharpness >= 70) colorClass = 'bg-green-600 text-white'
-  else if (sharpness >= 40) colorClass = 'bg-yellow-500 text-black'
-
-  return (
-    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${colorClass}`}>
-      {sharpness.toFixed(0)}
-    </span>
-  )
+function formatTimestamp(seconds) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  const f = Math.round((seconds % 1) * 24)
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(f).padStart(2,'0')}`
 }
 
 export default function FrameCard({ frame, selected, onToggle }) {
@@ -16,36 +12,45 @@ export default function FrameCard({ frame, selected, onToggle }) {
   return (
     <div
       onClick={() => onToggle(frame.id)}
-      className={`bg-gray-800 rounded-lg overflow-hidden cursor-pointer transition-all ${
-        isSelected ? 'ring-2 ring-indigo-500' : 'ring-1 ring-gray-700'
-      }`}
+      className="group relative flex flex-col gap-3 cursor-pointer"
     >
-      <div className="relative">
-        {/* 16:9 aspect ratio container */}
-        <div className="aspect-video relative">
-          <img
-            src={`/api/frames/${frame.id}`}
-            alt={`Frame at ${frame.timestamp}s`}
-            className="w-full h-full object-cover"
-          />
+      <div
+        className={`aspect-video bg-[#1c1b1b] rounded-lg overflow-hidden relative transition-all active:scale-95 duration-200 ${
+          isSelected
+            ? 'border-2 border-[#3F51B5] shadow-2xl'
+            : 'border border-transparent hover:border-white/20'
+        }`}
+      >
+        <img
+          src={`/api/frames/${frame.id}`}
+          alt={`Frame at ${frame.timestamp}s`}
+          className={`w-full h-full object-cover transition-opacity ${isSelected ? 'opacity-90' : 'opacity-60 group-hover:opacity-100'}`}
+        />
+
+        {/* Selection indicator top-right */}
+        <div className={`absolute top-3 right-3 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+          {isSelected ? (
+            <div className="bg-[#3F51B5] text-white rounded-full p-1 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[18px]" style={{fontVariationSettings: "'FILL' 1"}}>check_circle</span>
+            </div>
+          ) : (
+            <div className="bg-white/10 backdrop-blur-md text-white rounded-full p-1 border border-white/20">
+              <span className="material-symbols-outlined text-[18px]">radio_button_unchecked</span>
+            </div>
+          )}
         </div>
 
-        {/* Checkbox overlay top-right */}
-        <div className="absolute top-2 right-2">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggle(frame.id)}
-            onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 accent-indigo-500 cursor-pointer"
-          />
-        </div>
+        {/* Sharpness badge bottom-left */}
+        {frame.sharpness != null && (
+          <div className="absolute bottom-3 left-3 bg-[#353534]/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest text-[#bac3ff] border border-white/10">
+            {frame.sharpness.toFixed(1)} SHARP
+          </div>
+        )}
       </div>
 
-      {/* Bottom info strip */}
-      <div className="flex items-center justify-between px-2 py-1.5">
-        <span className="text-gray-400 text-xs">{frame.timestamp.toFixed(1)}s</span>
-        <SharpnessBadge sharpness={frame.sharpness} />
+      <div className="flex justify-between items-center px-1">
+        <span className="font-mono text-[12px] text-[#c5c5d4] tracking-wider">{formatTimestamp(frame.timestamp)}</span>
+        <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-widest">Frame {frame.id}</span>
       </div>
     </div>
   )

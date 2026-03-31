@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import TopBar from './components/TopBar'
-import ProgressBar from './components/ProgressBar'
 import FrameGrid from './components/FrameGrid'
 import BottomBar from './components/BottomBar'
 
@@ -78,14 +77,15 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col pb-16">
+    <div className="min-h-screen bg-[#131313] text-[#e5e2e1]">
       <TopBar
         videoName={videoName}
         interval={interval}
         onIntervalChange={setInterval}
         onExtract={handleExtract}
+        extracting={extracting}
+        progress={progress}
       />
-      {extracting && <ProgressBar progress={progress} />}
       <FrameGrid frames={frames} selected={selected} onToggle={handleToggle} />
       <BottomBar
         frames={frames}
@@ -93,6 +93,8 @@ export default function App() {
         onSelectAll={handleSelectAll}
         onDeselectAll={handleDeselectAll}
         onExport={handleExport}
+        extracting={extracting}
+        progress={progress}
       />
     </div>
   )

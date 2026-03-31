@@ -1,33 +1,49 @@
-export default function TopBar({ videoName, interval, onIntervalChange, onExtract }) {
+export default function TopBar({ videoName, interval, onIntervalChange, onExtract, extracting, progress }) {
   return (
-    <nav className="bg-gray-900 px-4 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <span className="font-bold text-white text-lg">Captura</span>
+    <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#131313]/90 backdrop-blur-xl shadow-2xl">
+      <div className="flex items-center gap-8">
+        <h1 className="text-xl font-black text-white tracking-tighter uppercase">Captura</h1>
         {videoName && (
-          <span className="text-gray-400 text-sm truncate max-w-xs">{videoName}</span>
+          <span className="text-[#bac3ff] font-bold tracking-tight text-sm uppercase px-1 truncate max-w-xs">
+            {videoName}
+          </span>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="text-gray-400 text-sm">Interval:</label>
-        <select
-          value={interval}
-          onChange={(e) => onIntervalChange(Number(e.target.value))}
-          className="bg-gray-800 text-white text-sm border border-gray-700 rounded px-2 py-1"
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] font-bold tracking-widest uppercase text-[#c5c5d4]">Interval</label>
+          <select
+            value={interval}
+            onChange={(e) => onIntervalChange(Number(e.target.value))}
+            className="bg-[#1c1b1b] text-[#e5e2e1] text-xs border border-[#454652] rounded px-2 py-1.5 outline-none"
+          >
+            <option value={1}>1s</option>
+            <option value={2}>2s</option>
+            <option value={5}>5s</option>
+            <option value={10}>10s</option>
+          </select>
+        </div>
+
+        <button
+          onClick={onExtract}
+          disabled={extracting}
+          className="bg-gradient-to-br from-[#bac3ff] to-[#4453a7] text-[#15267b] font-bold tracking-widest uppercase text-[12px] px-6 py-2.5 rounded-full active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          <option value={1}>1s</option>
-          <option value={2}>2s</option>
-          <option value={5}>5s</option>
-          <option value={10}>10s</option>
-        </select>
+          <span className="material-symbols-outlined text-[16px]">movie_filter</span>
+          {extracting ? 'Extracting…' : 'Extract'}
+        </button>
       </div>
 
-      <button
-        onClick={onExtract}
-        className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded transition-colors"
-      >
-        Extract
-      </button>
-    </nav>
+      {/* Progress indicator integrated at bottom edge */}
+      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#2a2a2a]">
+        {extracting && (
+          <div
+            className="h-full bg-[#bac3ff] transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        )}
+      </div>
+    </header>
   )
 }
