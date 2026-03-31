@@ -52,6 +52,15 @@ Captura starts a local server on port **8765** and opens `http://localhost:8765`
 4. **Select frames** — click any frame to toggle selection (blue border = selected). Use **Select All** / **Deselect All** in the bottom bar as needed.
 5. **Export** — click the Export button. Selected frames are copied to `~/Desktop/captura-export/`.
 
+### File lifecycle
+
+| Location | Content | When deleted |
+|----------|---------|--------------|
+| `/tmp/captura-XXXXXX/` | All extracted frames (JPEGs) | Automatically when you quit Captura (Ctrl+C) |
+| `~/Desktop/captura-export/` | Frames you exported | Never — these are yours to keep or delete manually |
+
+Frames you did **not** export are temporary and disappear when Captura exits. If you quit without exporting, they're gone — but `/tmp` is also cleared on reboot anyway.
+
 ## API
 
 The Go backend exposes a small REST API (useful for scripting or testing):

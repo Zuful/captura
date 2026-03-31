@@ -221,7 +221,8 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := os.MkdirAll(req.OutputDir, 0755); err != nil {
+	outputDir := expandHome(req.OutputDir)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		http.Error(w, fmt.Sprintf("cannot create output dir: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -241,7 +242,7 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			continue
 		}
-		dest := filepath.Join(req.OutputDir, filepath.Base(f.Path))
+		dest := filepath.Join(outputDir, filepath.Base(f.Path))
 		if err := copyFile(f.Path, dest); err != nil {
 			http.Error(w, fmt.Sprintf("failed to copy %s: %v", id, err), http.StatusInternalServerError)
 			return
@@ -289,6 +290,18 @@ const placeholderHTML = `<!DOCTYPE html>
   </div>
 </body>
 </html>`
+
+// expandHome replaces a leading ~ with the current user's home directory.
+func expandHome(path string) string {
+	if len(path) == 0 || path[0] != '~' {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	return filepath.Join(home, path[1:])
+}
 
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
