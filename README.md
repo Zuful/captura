@@ -35,23 +35,22 @@ go build -o captura .
 ## Usage
 
 ```bash
-./captura <video-file>
-```
-
-Example:
-
-```bash
+# With a video file — goes straight to the extraction UI
 ./captura ~/Videos/footage.mp4
+
+# Without arguments — opens the upload screen in the browser
+./captura
 ```
 
 Captura starts a local server on port **8765** and opens `http://localhost:8765` in your default browser automatically.
 
 ### Workflow
 
-1. **Set interval** — choose how many seconds between extracted frames (1s, 2s, 5s, 10s) using the dropdown in the top bar.
-2. **Extract** — click the Extract button. ffmpeg runs and the frame grid populates.
-3. **Select frames** — click any frame to toggle selection (blue border = selected). Use **Select All** / **Deselect All** in the bottom bar as needed.
-4. **Export** — click the Export button. Selected frames are copied to `~/Desktop/captura-export/`.
+1. **Load a video** — either pass the path as an argument, or drag & drop / browse for a file in the upload screen.
+2. **Set interval** — choose how many seconds between extracted frames (1s, 2s, 5s, 10s) using the dropdown in the top bar.
+3. **Extract** — click the Extract button. ffmpeg runs and the frame grid populates.
+4. **Select frames** — click any frame to toggle selection (blue border = selected). Use **Select All** / **Deselect All** in the bottom bar as needed.
+5. **Export** — click the Export button. Selected frames are copied to `~/Desktop/captura-export/`.
 
 ## API
 
@@ -59,6 +58,8 @@ The Go backend exposes a small REST API (useful for scripting or testing):
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET` | `/api/status` | Returns `{"videoLoaded": bool, "videoName": string}` |
+| `POST` | `/api/video` | Upload a video file (`multipart/form-data`, field `file`) |
 | `POST` | `/api/extract` | Start extraction. Body: `{"interval": 2.0}` |
 | `GET` | `/api/frames` | List all extracted frames with metadata |
 | `GET` | `/api/frames/{id}` | Serve the JPEG image for a frame |

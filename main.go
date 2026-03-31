@@ -16,14 +16,12 @@ import (
 var frontendDist embed.FS
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: captura <video-file>\n")
-		os.Exit(1)
+	videoPath := ""
+	if len(os.Args) >= 2 {
+		videoPath = os.Args[1]
 	}
 
-	videoPath := os.Args[1]
 	port := 8765
-
 	url := fmt.Sprintf("http://localhost:%d", port)
 
 	go func() {

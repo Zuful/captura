@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,7 +19,9 @@ import (
 
 // Server holds the application state for a single session.
 type Server struct {
+	mu        sync.RWMutex
 	videoPath string
+	videoName string
 	outputDir string
 	frames    []extractor.Frame
 }
@@ -34,6 +37,7 @@ func Start(videoPath string, port int, embedded embed.FS) {
 
 	s := &Server{
 		videoPath: videoPath,
+		videoName: filepath.Base(videoPath),
 		outputDir: tmpDir,
 	}
 
@@ -42,6 +46,8 @@ func Start(videoPath string, port int, embedded embed.FS) {
 	r.Use(middleware.Recoverer)
 
 	// API routes
+	r.Get("/api/status", s.handleStatus)
+	r.Post("/api/video", s.handleUploadVideo)
 	r.Post("/api/extract", s.handleExtract)
 	r.Get("/api/frames", s.handleListFrames)
 	r.Get("/api/frames/{id}", s.handleGetFrame)
@@ -57,6 +63,66 @@ func Start(videoPath string, port int, embedded embed.FS) {
 	}
 }
 
+// handleStatus reports whether a video is currently loaded.
+//
+// GET /api/status
+func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	loaded := s.videoPath != ""
+	name := s.videoName
+	s.mu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"videoLoaded": loaded,
+		"videoName":   name,
+	})
+}
+
+// handleUploadVideo receives a video file upload and sets it as the active video.
+//
+// POST /api/video  (multipart/form-data, field "file")
+func (s *Server) handleUploadVideo(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "missing file field", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	s.mu.RLock()
+	destPath := filepath.Join(s.outputDir, header.Filename)
+	s.mu.RUnlock()
+
+	dest, err := os.Create(destPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("cannot save file: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer dest.Close()
+
+	if _, err := io.Copy(dest, file); err != nil {
+		http.Error(w, fmt.Sprintf("failed to write file: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	s.mu.Lock()
+	s.videoPath = destPath
+	s.videoName = header.Filename
+	s.frames = nil
+	s.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"videoName": header.Filename,
+	})
+}
+
 // handleExtract triggers frame extraction.
 //
 // POST /api/extract
@@ -70,13 +136,25 @@ func (s *Server) handleExtract(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	frames, err := extractor.Extract(s.videoPath, req.Interval, s.outputDir)
+	s.mu.RLock()
+	videoPath := s.videoPath
+	s.mu.RUnlock()
+
+	if videoPath == "" {
+		http.Error(w, "no video loaded", http.StatusBadRequest)
+		return
+	}
+
+	frames, err := extractor.Extract(videoPath, req.Interval, s.outputDir)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("extraction failed: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	s.mu.Lock()
 	s.frames = frames
+	s.mu.Unlock()
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(frames)
 }
@@ -85,12 +163,16 @@ func (s *Server) handleExtract(w http.ResponseWriter, r *http.Request) {
 //
 // GET /api/frames
 func (s *Server) handleListFrames(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	frames := s.frames
+	s.mu.RUnlock()
+
 	w.Header().Set("Content-Type", "application/json")
-	if s.frames == nil {
+	if frames == nil {
 		json.NewEncoder(w).Encode([]extractor.Frame{})
 		return
 	}
-	json.NewEncoder(w).Encode(s.frames)
+	json.NewEncoder(w).Encode(frames)
 }
 
 // handleGetFrame serves the image file for a specific frame by ID.
@@ -99,7 +181,11 @@ func (s *Server) handleListFrames(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetFrame(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	for _, f := range s.frames {
+	s.mu.RLock()
+	frames := s.frames
+	s.mu.RUnlock()
+
+	for _, f := range frames {
 		if f.ID == id {
 			http.ServeFile(w, r, f.Path)
 			return
@@ -128,9 +214,12 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build a quick lookup map
-	frameByID := make(map[string]extractor.Frame, len(s.frames))
-	for _, f := range s.frames {
+	s.mu.RLock()
+	frames := s.frames
+	s.mu.RUnlock()
+
+	frameByID := make(map[string]extractor.Frame, len(frames))
+	for _, f := range frames {
 		frameByID[f.ID] = f
 	}
 
@@ -156,15 +245,12 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleFrontend serves the embedded React app or a placeholder page.
-//
-// GET /*
 func (s *Server) handleFrontend(w http.ResponseWriter, r *http.Request) {
 	if frontendFS != nil {
 		http.FileServer(frontendFS).ServeHTTP(w, r)
 		return
 	}
 
-	// Placeholder until the frontend is built
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, placeholderHTML)
 }
@@ -186,13 +272,12 @@ const placeholderHTML = `<!DOCTYPE html>
   <div class="card">
     <h1>Captura</h1>
     <p>Frontend not built yet.</p>
-    <p>Run <code>make build</code> or <code>make dev-frontend</code> to start the React app.</p>
+    <p>Run <code>make build</code> to build.</p>
     <p>API is live at <code>/api/</code></p>
   </div>
 </body>
 </html>`
 
-// copyFile copies src to dst, creating dst if needed.
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {

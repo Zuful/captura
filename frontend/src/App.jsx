@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import TopBar from './components/TopBar'
 import FrameGrid from './components/FrameGrid'
 import BottomBar from './components/BottomBar'
+import UploadView from './components/UploadView'
 
 export default function App() {
+  const [videoLoaded, setVideoLoaded] = useState(null) // null = loading
   const [frames, setFrames] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [extracting, setExtracting] = useState(false)
@@ -12,11 +14,29 @@ export default function App() {
   const [interval, setInterval] = useState(2)
 
   useEffect(() => {
+    fetch('/api/status')
+      .then((r) => r.json())
+      .then((data) => {
+        setVideoLoaded(data.videoLoaded)
+        if (data.videoName) setVideoName(data.videoName)
+      })
+      .catch(() => setVideoLoaded(false))
+  }, [])
+
+  useEffect(() => {
+    if (!videoLoaded) return
     fetch('/api/frames')
       .then((r) => r.json())
       .then((data) => setFrames(data || []))
       .catch(() => {})
-  }, [])
+  }, [videoLoaded])
+
+  function handleVideoLoaded(name) {
+    setVideoName(name)
+    setVideoLoaded(true)
+    setFrames([])
+    setSelected(new Set())
+  }
 
   function handleToggle(id) {
     setSelected((prev) => {
@@ -74,6 +94,14 @@ export default function App() {
     } catch (err) {
       console.error('Export failed:', err)
     }
+  }
+
+  // Still checking status
+  if (videoLoaded === null) return null
+
+  // No video loaded — show upload screen
+  if (!videoLoaded) {
+    return <UploadView onVideoLoaded={handleVideoLoaded} />
   }
 
   return (
