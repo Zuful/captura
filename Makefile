@@ -1,5 +1,5 @@
 build:
-	cd frontend && npm run build && cd .. && go build -o captura .
+	cd frontend && npm install && npm run build && cd .. && go build -o captura .
 
 dev-backend:
 	go run .

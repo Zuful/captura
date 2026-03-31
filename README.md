@@ -20,21 +20,17 @@ A lightweight, self-contained tool for extracting and selecting video frames to 
 ## Build
 
 ```bash
-# Install frontend dependencies (first time only)
-cd frontend && npm install && cd ..
-
-# Build everything — compiles the React app then embeds it into the Go binary
-cd frontend && npm run build && cd ..
-go build -o captura .
-```
-
-Or with make:
-
-```bash
 make build
 ```
 
-This produces a single `captura` binary with the entire frontend embedded inside it.
+This installs frontend dependencies, compiles the React app, and embeds it into a single self-contained Go binary.
+
+If you don't have `make`, run the steps manually:
+
+```bash
+cd frontend && npm install && npm run build && cd ..
+go build -o captura .
+```
 
 ## Usage
 
