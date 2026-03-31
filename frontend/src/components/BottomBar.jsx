@@ -1,4 +1,4 @@
-export default function BottomBar({ frames, selected, onSelectAll, onDeselectAll, onExport, extracting, progress }) {
+export default function BottomBar({ frames, selected, onSelectAll, onDeselectAll, onExport, extracting, progress, exportDir, onExportDirChange }) {
   const count = selected.size
 
   return (
@@ -40,19 +40,32 @@ export default function BottomBar({ frames, selected, onSelectAll, onDeselectAll
         )}
       </div>
 
-      {/* Export button */}
-      <button
-        onClick={onExport}
-        disabled={count === 0}
-        className={`flex flex-col items-center justify-center transition-all active:scale-95 duration-200 ${
-          count > 0 ? 'text-[#bac3ff] hover:text-white' : 'text-neutral-600 cursor-not-allowed'
-        }`}
-      >
-        <span className="material-symbols-outlined text-[20px] mb-1">download</span>
-        <span className="text-[12px] font-bold tracking-widest uppercase">
-          {count > 0 ? `Export ${count}` : '0 Selected'}
-        </span>
-      </button>
+      {/* Export path + button */}
+      <div className="flex flex-col items-end gap-1.5">
+        <div className="flex items-center gap-1.5 bg-[#1c1b1b] border border-[#454652] rounded px-2 py-1 focus-within:border-[#bac3ff]/50 transition-colors">
+          <span className="material-symbols-outlined text-[14px] text-neutral-600">folder</span>
+          <input
+            type="text"
+            value={exportDir}
+            onChange={(e) => onExportDirChange(e.target.value)}
+            className="bg-transparent text-[11px] font-mono text-[#c5c5d4] outline-none w-48 placeholder:text-neutral-700"
+            placeholder="~/Desktop/captura-export"
+            spellCheck={false}
+          />
+        </div>
+        <button
+          onClick={onExport}
+          disabled={count === 0}
+          className={`flex items-center gap-2 transition-all active:scale-95 duration-200 ${
+            count > 0 ? 'text-[#bac3ff] hover:text-white' : 'text-neutral-600 cursor-not-allowed'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">download</span>
+          <span className="text-[11px] font-bold tracking-widest uppercase">
+            {count > 0 ? `Export ${count}` : '0 Selected'}
+          </span>
+        </button>
+      </div>
     </footer>
   )
 }
