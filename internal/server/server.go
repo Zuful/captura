@@ -4,12 +4,17 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/draw"
+	"image/jpeg"
+	_ "image/png"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -207,18 +212,29 @@ func (s *Server) handleGetFrame(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "frame not found", http.StatusNotFound)
 }
 
-// handleExport copies selected frames to a user-specified output directory.
+// handleExport copies selected frames to a user-specified output directory,
+// optionally cropping to a target aspect ratio.
 //
 // POST /api/export
-// Body: {"ids": ["frame_0001", ...], "outputDir": "/path/to/save"}
+// Body: {"ids": ["frame_0001", ...], "outputDir": "/path/to/save", "format": "landscape"|"portrait"|"both"}
+//
+// format values:
+//
+//	"landscape" (default) — full frame as-is → frame_0001.jpg
+//	"portrait"            — 2:3 center crop  → frame_0001_poster.jpg
+//	"both"                — both variants    → frame_0001_card.jpg + frame_0001_poster.jpg
 func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		IDs       []string `json:"ids"`
 		OutputDir string   `json:"outputDir"`
+		Format    string   `json:"format"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
+	}
+	if req.Format == "" {
+		req.Format = "landscape"
 	}
 
 	outputDir := expandHome(req.OutputDir)
@@ -242,12 +258,38 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			continue
 		}
-		dest := filepath.Join(outputDir, filepath.Base(f.Path))
-		if err := copyFile(f.Path, dest); err != nil {
-			http.Error(w, fmt.Sprintf("failed to copy %s: %v", id, err), http.StatusInternalServerError)
-			return
+		base := strings.TrimSuffix(filepath.Base(f.Path), filepath.Ext(f.Path))
+
+		switch req.Format {
+		case "portrait":
+			dest := filepath.Join(outputDir, base+"_poster.jpg")
+			if err := exportCropped(f.Path, dest, 2, 3); err != nil {
+				http.Error(w, fmt.Sprintf("failed to crop %s: %v", id, err), http.StatusInternalServerError)
+				return
+			}
+			exported = append(exported, dest)
+
+		case "both":
+			card := filepath.Join(outputDir, base+"_card.jpg")
+			poster := filepath.Join(outputDir, base+"_poster.jpg")
+			if err := copyFile(f.Path, card); err != nil {
+				http.Error(w, fmt.Sprintf("failed to copy %s: %v", id, err), http.StatusInternalServerError)
+				return
+			}
+			if err := exportCropped(f.Path, poster, 2, 3); err != nil {
+				http.Error(w, fmt.Sprintf("failed to crop %s: %v", id, err), http.StatusInternalServerError)
+				return
+			}
+			exported = append(exported, card, poster)
+
+		default: // "landscape"
+			dest := filepath.Join(outputDir, base+".jpg")
+			if err := copyFile(f.Path, dest); err != nil {
+				http.Error(w, fmt.Sprintf("failed to copy %s: %v", id, err), http.StatusInternalServerError)
+				return
+			}
+			exported = append(exported, dest)
 		}
-		exported = append(exported, dest)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -255,6 +297,47 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		"exported": exported,
 		"count":    len(exported),
 	})
+}
+
+// exportCropped reads the JPEG at src, crops it to the given wRatio:hRatio
+// aspect ratio (center-aligned), and writes the result to dst.
+func exportCropped(src, dst string, wRatio, hRatio int) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return err
+	}
+
+	b := img.Bounds()
+	srcW, srcH := b.Dx(), b.Dy()
+
+	// Maximize the crop area that fits wRatio:hRatio inside the source
+	newW := srcH * wRatio / hRatio
+	newH := srcH
+	if newW > srcW {
+		newW = srcW
+		newH = srcW * hRatio / wRatio
+	}
+
+	x0 := b.Min.X + (srcW-newW)/2
+	y0 := b.Min.Y + (srcH-newH)/2
+	cropRect := image.Rect(x0, y0, x0+newW, y0+newH)
+
+	cropped := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	draw.Draw(cropped, cropped.Bounds(), img, cropRect.Min, draw.Src)
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	return jpeg.Encode(out, cropped, &jpeg.Options{Quality: 92})
 }
 
 // handleFrontend serves the embedded React app or a placeholder page.

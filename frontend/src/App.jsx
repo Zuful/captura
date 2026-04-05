@@ -13,6 +13,7 @@ export default function App() {
   const [videoName, setVideoName] = useState('')
   const [interval, setInterval] = useState(2)
   const [exportDir, setExportDir] = useState('~/Desktop/captura-export')
+  const [exportFormat, setExportFormat] = useState('landscape')
 
   useEffect(() => {
     fetch('/api/status')
@@ -86,6 +87,7 @@ export default function App() {
         body: JSON.stringify({
           ids: [...selected],
           outputDir: exportDir,
+          format: exportFormat,
         }),
       })
       if (res.ok) {
@@ -126,6 +128,8 @@ export default function App() {
         progress={progress}
         exportDir={exportDir}
         onExportDirChange={setExportDir}
+        exportFormat={exportFormat}
+        onExportFormatChange={setExportFormat}
       />
     </div>
   )

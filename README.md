@@ -50,7 +50,11 @@ Captura starts a local server on port **8765** and opens `http://localhost:8765`
 2. **Set interval** — choose how many seconds between extracted frames (1s, 2s, 5s, 10s) using the dropdown in the top bar.
 3. **Extract** — click the Extract button. ffmpeg runs and the frame grid populates.
 4. **Select frames** — click any frame to toggle selection (blue border = selected). Use **Select All** / **Deselect All** in the bottom bar as needed.
-5. **Export** — click the Export button. Selected frames are copied to `~/Desktop/captura-export/`.
+5. **Choose a format** — pick an export format in the bottom bar:
+   - **16:9** — full frame as-is (default) → `frame_0001.jpg`
+   - **2:3** — center-cropped portrait → `frame_0001_poster.jpg`
+   - **Both** — both variants in one pass → `frame_0001_card.jpg` + `frame_0001_poster.jpg`
+6. **Export** — click the Export button. Selected frames are saved to the configured output directory.
 
 ### File lifecycle
 
@@ -72,7 +76,7 @@ The Go backend exposes a small REST API (useful for scripting or testing):
 | `POST` | `/api/extract` | Start extraction. Body: `{"interval": 2.0}` |
 | `GET` | `/api/frames` | List all extracted frames with metadata |
 | `GET` | `/api/frames/{id}` | Serve the JPEG image for a frame |
-| `POST` | `/api/export` | Export frames. Body: `{"ids": [...], "outputDir": "/path"}` |
+| `POST` | `/api/export` | Export frames. Body: `{"ids": [...], "outputDir": "/path", "format": "landscape\|portrait\|both"}` |
 
 Frame objects returned by the API:
 
