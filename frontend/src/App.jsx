@@ -92,10 +92,13 @@ export default function App() {
       })
       if (res.ok) {
         const data = await res.json()
-        alert(`Exported ${data.count} frame(s) successfully.`)
+        alert(`Exported ${data.count} frame(s) to:\n${exportDir}`)
+      } else {
+        const msg = await res.text()
+        alert(`Export failed:\n${msg}`)
       }
     } catch (err) {
-      console.error('Export failed:', err)
+      alert(`Export failed: ${err.message}`)
     }
   }
 
