@@ -27,6 +27,13 @@ func Extract(videoPath string, intervalSec float64, outputDir string) ([]Frame, 
 		return nil, fmt.Errorf("create output dir: %w", err)
 	}
 
+	// Remove any frames from a previous extraction before starting fresh
+	if old, _ := filepath.Glob(filepath.Join(outputDir, "frame_*.jpg")); len(old) > 0 {
+		for _, f := range old {
+			os.Remove(f)
+		}
+	}
+
 	// fps filter: 1 frame every intervalSec seconds
 	fpsFilter := fmt.Sprintf("fps=1/%.4f", intervalSec)
 	pattern := filepath.Join(outputDir, "frame_%04d.jpg")
