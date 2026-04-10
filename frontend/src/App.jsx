@@ -16,10 +16,16 @@ export default function App() {
   const [exportFormat, setExportFormat] = useState('landscape')
 
   useEffect(() => {
-    fetch('/api/status')
+    const isNewTab = !sessionStorage.getItem('captura-session')
+    const init = isNewTab
+      ? fetch('/api/reset', { method: 'POST' }).then(() => fetch('/api/status'))
+      : fetch('/api/status')
+
+    init
       .then((r) => r.json())
       .then((data) => {
-        setVideoLoaded(data.videoLoaded)
+        sessionStorage.setItem('captura-session', '1')
+        setVideoLoaded(data.videoLoaded ?? false)
         if (data.videoName) setVideoName(data.videoName)
       })
       .catch(() => setVideoLoaded(false))
