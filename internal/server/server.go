@@ -64,6 +64,7 @@ func Start(videoPath string, port int, embedded embed.FS) {
 
 	// API routes
 	r.Get("/api/status", s.handleStatus)
+	r.Post("/api/reset", s.handleReset)
 	r.Post("/api/video", s.handleUploadVideo)
 	r.Post("/api/extract", s.handleExtract)
 	r.Get("/api/frames", s.handleListFrames)
@@ -78,6 +79,29 @@ func Start(videoPath string, port int, embedded embed.FS) {
 	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+// handleReset clears all extracted frames and the loaded video, returning the
+// server to a clean state so a new session can begin without restarting.
+//
+// POST /api/reset
+func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Remove every file inside the temp dir (frames + any uploaded video).
+	entries, err := os.ReadDir(s.outputDir)
+	if err == nil {
+		for _, e := range entries {
+			os.Remove(filepath.Join(s.outputDir, e.Name()))
+		}
+	}
+
+	s.videoPath = ""
+	s.videoName = ""
+	s.frames = nil
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleStatus reports whether a video is currently loaded.

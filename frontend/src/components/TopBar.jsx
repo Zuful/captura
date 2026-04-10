@@ -1,4 +1,4 @@
-export default function TopBar({ videoName, interval, onIntervalChange, onExtract, extracting, progress }) {
+export default function TopBar({ videoName, interval, onIntervalChange, onExtract, extracting, progress, onNewSession }) {
   return (
     <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#131313]/90 backdrop-blur-xl shadow-2xl">
       <div className="flex items-center gap-8">
@@ -11,6 +11,16 @@ export default function TopBar({ videoName, interval, onIntervalChange, onExtrac
       </div>
 
       <div className="flex items-center gap-4">
+        <button
+          onClick={onNewSession}
+          disabled={extracting}
+          title="Clear session and load a new video"
+          className="text-[#c5c5d4] hover:text-white text-[11px] font-bold tracking-widest uppercase flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-[15px]">restart_alt</span>
+          New Session
+        </button>
+
         <div className="flex items-center gap-2">
           <label className="text-[10px] font-bold tracking-widest uppercase text-[#c5c5d4]">Interval</label>
           <select

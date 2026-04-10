@@ -79,6 +79,18 @@ export default function App() {
     }
   }
 
+  async function handleNewSession() {
+    try {
+      await fetch('/api/reset', { method: 'POST' })
+    } catch (err) {
+      console.error('Reset failed:', err)
+    }
+    setVideoLoaded(false)
+    setVideoName('')
+    setFrames([])
+    setSelected(new Set())
+  }
+
   async function handleExport() {
     try {
       const res = await fetch('/api/export', {
@@ -119,6 +131,7 @@ export default function App() {
         onExtract={handleExtract}
         extracting={extracting}
         progress={progress}
+        onNewSession={handleNewSession}
       />
       <FrameGrid frames={frames} selected={selected} onToggle={handleToggle} />
       <BottomBar
