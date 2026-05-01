@@ -65,6 +65,7 @@ func Start(videoPath string, port int, embedded embed.FS) {
 	// API routes
 	r.Get("/api/status", s.handleStatus)
 	r.Post("/api/reset", s.handleReset)
+	r.Post("/api/cleanup", s.handleCleanup)
 	r.Post("/api/video", s.handleUploadVideo)
 	r.Post("/api/extract", s.handleExtract)
 	r.Get("/api/frames", s.handleListFrames)
@@ -102,6 +103,61 @@ func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
 	s.frames = nil
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleCleanup finds and removes all orphaned captura-* temp directories
+// left behind by previous sessions that crashed without a clean shutdown.
+// The current session's directory is never touched.
+//
+// POST /api/cleanup
+// Response: {"deleted": 2, "freedBytes": 123456}
+func (s *Server) handleCleanup(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	currentDir := s.outputDir
+	s.mu.RUnlock()
+
+	pattern := filepath.Join(os.TempDir(), "captura-*")
+	candidates, err := filepath.Glob(pattern)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("glob failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var deleted int
+	var freedBytes int64
+	for _, dir := range candidates {
+		if dir == currentDir {
+			continue // never touch the live session
+		}
+		// Measure size before deleting
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			if size, err := dirSize(dir); err == nil {
+				freedBytes += size
+			}
+			if err := os.RemoveAll(dir); err == nil {
+				deleted++
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"deleted":    deleted,
+		"freedBytes": freedBytes,
+	})
+}
+
+// dirSize returns the total size in bytes of all files under root.
+func dirSize(root string) (int64, error) {
+	var total int64
+	err := filepath.Walk(root, func(_ string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		total += info.Size()
+		return nil
+	})
+	return total, err
 }
 
 // handleStatus reports whether a video is currently loaded.

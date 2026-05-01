@@ -1,4 +1,4 @@
-export default function TopBar({ videoName, interval, onIntervalChange, onExtract, extracting, progress, onNewSession }) {
+export default function TopBar({ videoName, interval, onIntervalChange, onExtract, extracting, progress, onNewSession, onCleanup }) {
   return (
     <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#131313]/90 backdrop-blur-xl shadow-2xl">
       <div className="flex items-center gap-8">
@@ -19,6 +19,16 @@ export default function TopBar({ videoName, interval, onIntervalChange, onExtrac
         >
           <span className="material-symbols-outlined text-[15px]">restart_alt</span>
           New Session
+        </button>
+
+        <button
+          onClick={onCleanup}
+          disabled={extracting}
+          title="Delete temp files left by crashed sessions"
+          className="text-[#c5c5d4] hover:text-[#ffb4ab] text-[11px] font-bold tracking-widest uppercase flex items-center gap-1.5 opacity-40 hover:opacity-80 transition-opacity disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-[15px]">delete_sweep</span>
+          Clean Cache
         </button>
 
         <div className="flex items-center gap-2">

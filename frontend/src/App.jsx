@@ -18,6 +18,7 @@ export default function App() {
   // Without this, /api/frames/frame_0001 from session 1 would be served from
   // cache in session 2 (same URL, different content).
   const [extractionKey, setExtractionKey] = useState(0)
+  const [toast, setToast] = useState(null) // {msg, error?}
 
   useEffect(() => {
     const isNewTab = !sessionStorage.getItem('captura-session')
@@ -102,6 +103,27 @@ export default function App() {
     setSelected(new Set())
   }
 
+  function showToast(msg, error = false) {
+    setToast({ msg, error })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  async function handleCleanup() {
+    try {
+      const res = await fetch('/api/cleanup', { method: 'POST' })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      if (data.deleted === 0) {
+        showToast('No orphaned cache to clean up.')
+      } else {
+        const mb = (data.freedBytes / 1024 / 1024).toFixed(1)
+        showToast(`${data.deleted} orphaned session${data.deleted > 1 ? 's' : ''} deleted — ${mb} MB freed.`)
+      }
+    } catch (err) {
+      showToast(`Cleanup failed: ${err.message}`, true)
+    }
+  }
+
   async function handleExport() {
     try {
       const res = await fetch('/api/export', {
@@ -143,7 +165,17 @@ export default function App() {
         extracting={extracting}
         progress={progress}
         onNewSession={handleNewSession}
+        onCleanup={handleCleanup}
       />
+      {toast && (
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-[12px] font-bold tracking-wide shadow-2xl backdrop-blur-md border transition-all ${
+          toast.error
+            ? 'bg-[#ffb4ab]/10 border-[#ffb4ab]/30 text-[#ffb4ab]'
+            : 'bg-[#bac3ff]/10 border-[#bac3ff]/30 text-[#bac3ff]'
+        }`}>
+          {toast.msg}
+        </div>
+      )}
       <FrameGrid frames={frames} selected={selected} onToggle={handleToggle} extractionKey={extractionKey} />
       <BottomBar
         frames={frames}
