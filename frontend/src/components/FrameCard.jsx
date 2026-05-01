@@ -6,7 +6,7 @@ function formatTimestamp(seconds) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(f).padStart(2,'0')}`
 }
 
-export default function FrameCard({ frame, selected, onToggle }) {
+export default function FrameCard({ frame, selected, onToggle, extractionKey }) {
   const isSelected = selected.has(frame.id)
 
   return (
@@ -22,7 +22,7 @@ export default function FrameCard({ frame, selected, onToggle }) {
         }`}
       >
         <img
-          src={`/api/frames/${frame.id}`}
+          src={`/api/frames/${frame.id}?v=${extractionKey}`}
           alt={`Frame at ${frame.timestamp}s`}
           className={`w-full h-full object-cover transition-opacity ${isSelected ? 'opacity-90' : 'opacity-60 group-hover:opacity-100'}`}
         />

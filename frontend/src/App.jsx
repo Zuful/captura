@@ -14,6 +14,10 @@ export default function App() {
   const [interval, setInterval] = useState(2)
   const [exportDir, setExportDir] = useState('~/Desktop/captura-export')
   const [exportFormat, setExportFormat] = useState('landscape')
+  // Incremented on each extraction to bust the browser cache for frame images.
+  // Without this, /api/frames/frame_0001 from session 1 would be served from
+  // cache in session 2 (same URL, different content).
+  const [extractionKey, setExtractionKey] = useState(0)
 
   useEffect(() => {
     const isNewTab = !sessionStorage.getItem('captura-session')
@@ -76,6 +80,7 @@ export default function App() {
         const data = await res.json()
         setFrames(data || [])
         setSelected(new Set())
+        setExtractionKey((k) => k + 1)
       }
     } catch (err) {
       console.error('Extract failed:', err)
@@ -139,7 +144,7 @@ export default function App() {
         progress={progress}
         onNewSession={handleNewSession}
       />
-      <FrameGrid frames={frames} selected={selected} onToggle={handleToggle} />
+      <FrameGrid frames={frames} selected={selected} onToggle={handleToggle} extractionKey={extractionKey} />
       <BottomBar
         frames={frames}
         selected={selected}

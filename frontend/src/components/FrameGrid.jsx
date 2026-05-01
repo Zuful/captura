@@ -1,6 +1,6 @@
 import FrameCard from './FrameCard'
 
-export default function FrameGrid({ frames, selected, onToggle }) {
+export default function FrameGrid({ frames, selected, onToggle, extractionKey }) {
   if (frames.length === 0) {
     return (
       <main className="pt-24 pb-32 px-8 min-h-screen flex flex-col">
@@ -32,6 +32,7 @@ export default function FrameGrid({ frames, selected, onToggle }) {
             frame={frame}
             selected={selected}
             onToggle={onToggle}
+            extractionKey={extractionKey}
           />
         ))}
       </div>

@@ -267,6 +267,14 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Remove any frame files left over from a previous export so the output
+	// directory only ever contains files from the current session.
+	if old, _ := filepath.Glob(filepath.Join(outputDir, "frame_*.jpg")); len(old) > 0 {
+		for _, f := range old {
+			os.Remove(f)
+		}
+	}
+
 	s.mu.RLock()
 	frames := s.frames
 	s.mu.RUnlock()
